@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "kgmon": {
+      "command": "python",
+      "args": [
+        "-m",
+        "kgmon_mcp.stdio"
+      ],
+      "env": {
+        "KGMON_HOME": "C:\\Users\\aziz\\Projects\\kgmon",
+        "KGMON_SECURITY": "strict"
+      },
+      "x-kgmon-managed": true
+    }
+  }
+}

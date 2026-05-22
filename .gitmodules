@@ -1,0 +1,3 @@
+[submodule "vendor/kaggle-skill"]
+	path = vendor/kaggle-skill
+	url = https://github.com/shepsci/kaggle-skill.git

@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kgmon-codex"
+version = "0.1.0"
+description = "Codex-compatible Kaggle automation plugin using shepsci/kaggle-skill as the Kaggle access layer."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "kaggle>=1.6",
+    "kagglehub>=0.3",
+    "python-dotenv>=1.0",
+    "requests>=2.31",
+    "typer>=0.12",
+    "mcp>=1.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.10",
+    "pytest>=8.2",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+kgmon = "kgmon_cli.main:app"
+kgx = "kgx_cli.main:app"
+kgmon-mcp = "kgmon_mcp.stdio:main"
+
+[tool.setuptools]
+packages = [
+    "kgmon_agents",
+    "kgmon_cli",
+    "kgmon_core",
+    "kgmon_kaggle",
+    "kgmon_mcp",
+    "kgmon_modes",
+    "kgmon_runtime",
+    "kgx_cli",
+]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+testpaths = ["tests"]
+norecursedirs = ["pytest-cache-files-*", "vendor"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [
+    "vendor",
+    "pytest-cache-files-*",
+    "pytest-tmp*",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+packages = [
+    "kgmon_agents",
+    "kgmon_cli",
+    "kgmon_core",
+    "kgmon_kaggle",
+    "kgmon_mcp",
+    "kgmon_modes",
+    "kgmon_runtime",
+    "kgx_cli",
+]

@@ -1,0 +1,34 @@
+{
+  "name": "kgmon",
+  "version": "0.1.0",
+  "description": "Codex-compatible Kaggle competition automation plugin with KGMON runtime and MCP tools.",
+  "author": {
+    "name": "KGMON contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "kaggle",
+    "mcp",
+    "machine-learning",
+    "automation"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "KGMON-Codex",
+    "shortDescription": "Kaggle automation runtime for Codex.",
+    "longDescription": "KGMON-Codex provides Codex-facing MCP tools for Kaggle competition setup, diagnostics, DS/ML prompt packs, experiment planning, verification, packaging, and guarded submission workflows.",
+    "developerName": "KGMON contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Run kgmon_doctor for this workspace.",
+      "List the KGMON DS/ML skills.",
+      "Show the current KGMON HUD."
+    ],
+    "brandColor": "#2563EB"
+  }
+}
