@@ -5,8 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kgmon-codex"
 version = "0.1.0"
-description = "Codex-compatible Kaggle automation plugin using shepsci/kaggle-skill as the Kaggle access layer."
+description = "MCP server and CLIs for a local Kaggle competition workspace, using shepsci/kaggle-skill for Kaggle access."
 readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Azizbek Xasanov" }]
 requires-python = ">=3.11"
 dependencies = [
     "kaggle>=1.6",

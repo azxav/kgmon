@@ -8,7 +8,7 @@
         "kgmon_mcp.stdio"
       ],
       "env": {
-        "KGMON_HOME": "C:\\Users\\aziz\\Projects\\kgmon",
+        "KGMON_HOME": ".",
         "KGMON_SECURITY": "strict"
       },
       "x-kgmon-managed": true

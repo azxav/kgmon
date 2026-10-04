@@ -1,188 +1,223 @@
-# KGMON-Codex Kaggle Automation Plugin
+# kgmon
 
-KGMON-Codex is a Codex-compatible Kaggle competition automation plugin. It wraps
-`shepsci/kaggle-skill` for Kaggle platform access and adds the KGMON software
-spine for workspace management, contracts, experiments, governance, and final
-solution packaging.
+An MCP server and pair of CLIs that turn a Kaggle competition into a local, validation-first workspace, and keep final submission behind an explicit confirmation.
 
-Milestone 1 provides:
+## What it does
 
-- Python package skeleton
-- Typer CLI entrypoint
-- MCP server entrypoint stub
-- Kaggle dependency and credential diagnostics
-- Secret redaction utilities
-- `vendor/kaggle-skill` integration point
+`kgmon` builds and runs a competition workspace: rules, data profile, validation folds, baseline experiments, an ensemble submission, and a final package. `kgx` is the runtime launcher for local state, DS/ML skill and prompt packs, verification, and MCP client config. MCP hosts talk to the stdio server at `python -m kgmon_mcp.stdio` (also installed as `kgmon-mcp`).
 
-Milestone 2 adds:
+Kaggle downloads, notebooks, and submissions go through `kgmon_kaggle`, which expects the vendored [`shepsci/kaggle-skill`](https://github.com/shepsci/kaggle-skill) checkout under `vendor/kaggle-skill`.
 
-- `KaggleAccessAdapter` wrapping vendored Kaggle skill scripts and Kaggle CLI
-- Competition workspace generation under `competitions/<slug>/`
-- Kaggle page capture with untrusted-content wrappers
-- `configs/competition.yaml` generation
-- SQLite artifact registry for raw competition files
+## Why
 
-Milestone 3 adds:
+Competition files, reports, and run lineage stay in the workspace instead of only in a chat transcript. Leakage checks can block validation, diagnostics redact secrets, and `KGMON_SECURITY=strict` limits paths and refuses automatic submission. You confirm a final submit yourself.
 
+## Demo
+
+![Terminal recording of kgx setup, kgx doctor, the DS/ML skill list, and kgmon kaggle doctor](docs/demo.gif)
+
+Recorded from a local session of `kgx setup --local`, `kgx doctor`, `kgx skills list --domain dsml`, and `kgmon kaggle doctor`. No Kaggle API token was set, so credentials report as missing. The `vendor/kaggle-skill` directory was present, so the doctor reported it as available.
+
+## Architecture
+
+```mermaid
+flowchart TB
+  clients["MCP clients: Codex, Claude, Cursor, VS Code"]
+  stdio["kgmon_mcp.stdio"]
+  server["kgmon_mcp.server"]
+  kgx["kgx CLI"]
+  kgmon["kgmon CLI"]
+  runtime["kgmon_runtime"]
+  core["kgmon_core"]
+  kaggle["kgmon_kaggle"]
+  vendor["vendor/kaggle-skill"]
+  disk["competitions/slug and .kgmon"]
+
+  clients --> stdio --> server
+  kgx --> runtime
+  kgmon --> core
+  server --> runtime
+  server --> core
+  server --> kaggle
+  core --> kaggle
+  kaggle --> vendor
+  runtime --> disk
+  core --> disk
+```
+
+`kgmon_mcp.server` exposes underscore tool names such as `kgmon_doctor` and `kgmon_verify_all`, plus `kgmon://` resources and DS/ML prompts. `kgmon_runtime` stores state, HUD, hooks, and verification evidence under `.kgmon/`. `kgmon_core` writes the competition tree under `competitions/<slug>/`.
+
+## Features
+
+- Stdio MCP server with stable JSON result envelopes, resources, and prompts
+- Client config helpers for Codex, Claude, Cursor, and VS Code
+- Competition workspace bootstrap and SQLite artifact registry
 - Rules and metric parsing from captured Kaggle pages
-- Data profiling with schema, missing-value, duplicate, target, and drift reports
-- `configs/competition.yaml` enrichment for inferred task, target, ID, metric, and rules
-- Validation planning with persisted folds in `data/processed/folds.csv`
-- Leakage guard reporting that blocks validation when high-risk signals are detected
+- Data profiling and validation plans, including a leakage guard that can block experiments
+- Baseline experiment specs, a dummy trainer, and DAG runs with local run lineage
+- Ensemble submission from test predictions, plus a final package (`submission.csv`, `inference.py`, `solution.ipynb`, environment files, provenance, and a report)
+- Guarded Kaggle notebook and submission commands
+- Runtime modes: `deep-interview`, `ralplan`, `team`, `ralph`, `ultrawork`, and `autopilot`
+- DS/ML skill, prompt, and checklist packs with a validation-first order
+- Secret redaction in diagnostics and logs
 
-Milestone 4 adds:
+## Install
 
-- Baseline experiment specs under `configs/model_params/`
-- A sklearn-style dummy baseline trainer interface and execution path
-- Optional LightGBM, XGBoost, and CatBoost adapter placeholders with clear dependency errors
-- OOF prediction contracts in `artifacts/oof/`
-- Test prediction contracts in `artifacts/test_preds/`
-- Baseline model artifacts and run reports
+Requires Python 3.11 or newer and Git.
 
-Milestone 5 adds:
+```bash
+git clone --recurse-submodules https://github.com/azxav/kgmon.git
+cd kgmon
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+kgx setup --local
+kgx doctor
+```
 
-- Experiment DAG execution with dependency ordering and retry metadata
-- SQLite run lineage for models, predictions, reports, ensembles, submissions, and final packages
-- Local MLflow-compatible tracking output under `mlruns/`
-- Ensemble search with weighted averaging, greedy hill climbing, rank averaging, and stacking report metadata
-- Final package generation under `artifacts/final/`
-- Kaggle notebook push/run/output and guarded submission bridge
-- Codex-facing MCP resources and tool wrappers with secret redaction
+If the clone did not fetch submodules:
 
-Milestone 6 adds:
+```bash
+git submodule update --init --recursive
+```
 
-- `kgx` as the final user-facing OMC-style runtime launcher
-- Local `.kgmon/` state root creation with state, mission, HUD, hook, and log directories
-- Runtime config, project memory, notepad, security policy, and log file initialization
-- Deterministic `.mcp.json` generation and repair while preserving existing MCP servers
-- `kgx doctor` and `kgx doctor conflicts` runtime health checks
-- KGMON MCP runtime resources and initial tool stubs
+On Windows PowerShell, activate the virtual environment with `.\.venv\Scripts\Activate.ps1`.
 
-Milestone 8 adds:
+`pip install -e .` is enough if you do not want pytest, Ruff, or mypy. The editable install provides `kgx`, `kgmon`, and `kgmon-mcp`.
 
-- `kgmon_agents` software-role registry for build/ML, review, domain, and coordination lanes
-- Explicit permitted tools, artifact contracts, and verification obligations per role
-- Bounded worker handoffs that store descriptors instead of large inline payloads
-- `kgx deep-interview`, `kgx ralplan`, `kgx team`, `kgx ralph`, `kgx ultrawork`, and `kgx autopilot`
-- Resumable mode history, active mode, HUD, team assignment, safe limits, and guarded submission state
+## Add it to an MCP client
 
-Milestone 9 adds:
+From the repository root, after the package is installed:
 
-- Deterministic verification gate registry with fresh evidence under `.kgmon/missions/<mission>/verification.json`
-- `KGMON_SECURITY=strict` runtime policy with path allowlisting, security logs, external-data checks, and guarded submissions
-- `kgx verify all`, `kgx hud`, `kgx status`, and enriched `kgx replay latest`
-- `kgx package final` and `kgx submit --final --require-confirmation` runtime commands
-- MCP `kgmon.verify.all`, `kgmon.hud.get`, `kgmon.replay.session`, and guarded submit/package stubs
+```bash
+kgx mcp install --client codex
+kgx mcp doctor --client codex
+```
 
-Milestone 10 adds:
+`--client` accepts `codex`, `claude`, `cursor`, or `vscode`. Codex, Claude, and Cursor configs are written to `.mcp.json`. VS Code config is written to `.vscode/mcp.json`. Restart the client after the file changes.
 
-- DS/ML-only skill, prompt, checklist, and agent-contract packs under `.kgmon/`
-- `kgx skills list --domain dsml` and `kgx skills inspect <skill-id>`
-- `kgx prompt run <prompt-id>` with prompt-run artifacts
-- `kgx team --domain dsml` routing for strategy -> EDA -> validation -> features -> modeling -> ablation -> ensemble -> postprocess -> package -> verify
-- Runtime guardrails for validation-first work, leakage audits, OOF evidence, external-data approval, provenance, and no automatic submission
+`kgx mcp install` sets `KGMON_HOME` to the absolute repository path. A hand-written server entry looks like this:
 
-Milestone 11 adds:
+```json
+{
+  "mcpServers": {
+    "kgmon": {
+      "command": "python",
+      "args": ["-m", "kgmon_mcp.stdio"],
+      "env": {
+        "KGMON_HOME": "/absolute/path/to/kgmon",
+        "KGMON_SECURITY": "strict"
+      }
+    }
+  }
+}
+```
 
-- Primary stdio MCP entrypoint via `python -m kgmon_mcp.stdio` and `kgmon-mcp`
-- Cross-client underscore tool names such as `kgmon_doctor`, `kgmon_hud_get`, `kgmon_verify_all`, `kgmon_skills_list`, and `kgmon_prompt_run`
-- Stable JSON-compatible result envelopes for public MCP tools
-- Workspace discovery through `KGMON_HOME`, local `.kgmon/`, repository markers, or explicit `workspace_root`
-- Lightweight `kgmon://...` resources and DS/ML prompt endpoints
-- Client config helpers: `kgx mcp install --client <client>` and `kgx mcp doctor --client <client>`
-- Stdio smoke, stdout contamination, schema compatibility, and tool contract tests
+VS Code uses a `servers` object and `"type": "stdio"` instead of `mcpServers`. `kgx mcp install --client vscode` writes that shape for you.
 
-## CLI
+The checked-in `.mcp.json` and `.vscode/mcp.json` point `KGMON_HOME` at `.` so they are not tied to one machine. Run `kgx mcp install` before relying on them in a client that does not start with the repository as its working directory.
+
+`guide.md` has a longer Codex plugin walkthrough.
+
+Public MCP tools:
+
+- `kgmon_artifacts_list`
+- `kgmon_bootstrap_competition`
+- `kgmon_competition_audit_rules`
+- `kgmon_data_profile`
+- `kgmon_doctor`
+- `kgmon_ensemble_search`
+- `kgmon_experiment_plan`
+- `kgmon_experiment_run`
+- `kgmon_experiment_status`
+- `kgmon_hud_get`
+- `kgmon_kaggle_doctor`
+- `kgmon_leakage_audit`
+- `kgmon_package_final`
+- `kgmon_prompt_run`
+- `kgmon_prompts_list`
+- `kgmon_skills_list`
+- `kgmon_status_get`
+- `kgmon_validation_plan`
+- `kgmon_verify_all`
+
+Resources include `kgmon://state/current`, `kgmon://mission/current`, `kgmon://hud/current`, `kgmon://logs/events`, and the `kgmon://competition/current/*` documents for the manifest, profile, validation, runs, artifacts, and final package.
+
+## Configuration
+
+kgmon reads process environment variables. Names are listed in `.env.example`; export them in the shell that launches the CLI or MCP server.
+
+| Variable | Role |
+| --- | --- |
+| `KAGGLE_API_TOKEN` | Preferred Kaggle credential. |
+| `KAGGLE_USERNAME` and `KAGGLE_KEY` | Legacy credential pair. Both must be set. |
+| `KGMON_HOME` | Workspace root used by the MCP server when it is not started inside the repo. |
+| `KGMON_SECURITY` | Set to `strict` for path allowlisting, security logs, and guarded submission behavior. |
+| `KGMON_STATE_ROOT` | State directory override. Defaults to `.kgmon` inside the workspace. |
+| `OPENAI_API_KEY`, `WANDB_API_KEY`, `HF_TOKEN` | Not required. Diagnostics redact them when they are present. |
+
+A token file at `~/.kaggle/access_token` is also detected by `kgmon kaggle doctor`. Doctor output shows redacted values, not the raw secret.
+
+## Examples
+
+Health check:
 
 ```bash
 kgx setup --local
-kgx setup --repair
 kgx doctor
 kgx doctor conflicts
-kgx deep-interview titanic
-kgx ralplan titanic
-kgx team 4:modeler "build baseline and ensemble"
-kgx team --domain dsml
+kgmon kaggle doctor
+```
+
+DS/ML pack:
+
+```bash
 kgx skills list --domain dsml
 kgx skills inspect kgmon-validation-leakage-auditor
 kgx prompt run validation-design
-kgx prompt run ensemble-search
-kgx mcp install --client codex
-kgx mcp doctor --client codex
-kgx ralph "verify and package final solution"
-kgx ultrawork "expand model lanes"
-kgx autopilot titanic
-KGMON_SECURITY=strict kgx doctor
-kgx verify all
-kgx hud
-kgx replay latest
-kgx package final --workspace competitions/titanic
-kgx submit --final --require-confirmation --workspace competitions/titanic
-python -m kgmon_mcp.stdio
-kgmon-mcp
+kgx team --domain dsml
+```
 
-kgmon --help
-kgmon kaggle doctor
+Ask an MCP client:
+
+```text
+Use the kgmon MCP server to run kgmon_doctor.
+```
+
+Competition workspace. Bootstrap, notebook, and submit commands call Kaggle. Replace `titanic` with the competition slug you are working on.
+
+```bash
 kgmon competition bootstrap titanic
 kgmon competition audit-rules --workspace competitions/titanic
 kgmon data profile --workspace competitions/titanic
 kgmon validation plan --workspace competitions/titanic
 kgmon experiment plan --mode baseline --workspace competitions/titanic
 kgmon experiment run --all --workspace competitions/titanic
-kgmon experiment run --dag competitions/titanic/configs/experiments/baseline_dag.yaml --workspace competitions/titanic
-kgmon artifacts list --workspace competitions/titanic
 kgmon ensemble search --workspace competitions/titanic
 kgmon package final --workspace competitions/titanic
-kgmon notebook push --final --workspace competitions/titanic
-kgmon notebook run --final --workspace competitions/titanic
-kgmon notebook fetch-output --final --workspace competitions/titanic
 kgmon submit --final --require-confirmation --confirm --workspace competitions/titanic
 ```
 
-`kgmon kaggle doctor` checks Python, Kaggle-related dependencies, the vendored
-Kaggle skill directory, and Kaggle credential availability without printing raw
-secret values.
+Runtime modes and verification:
 
-`kgmon competition bootstrap <slug>` creates the planned M2 workspace, downloads
-competition files into `data/raw`, saves Kaggle pages in `kaggle/pages`, writes
-`configs/competition.yaml`, and registers raw files in
-`artifacts/registry.sqlite`.
+```bash
+kgx deep-interview titanic
+kgx ralplan titanic
+kgx verify all
+kgx hud
+kgx replay latest
+KGMON_SECURITY=strict kgx doctor
+```
 
-`kgmon competition audit-rules --workspace <workspace>` parses the captured
-Kaggle rules and evaluation pages, then updates `configs/competition.yaml` with
-known rule fields and metric direction.
+`kgmon --help` and `kgx --help` list every command.
 
-`kgmon data profile --workspace <workspace>` inspects train, test, and sample
-submission CSV files, writes `artifacts/reports/profile.json` and
-`artifacts/reports/profile.md`, and updates the competition config with inferred
-data contract fields.
+## Development
 
-`kgmon validation plan --workspace <workspace>` chooses an initial validation
-strategy, writes fold assignments, persists `configs/validation.yaml`, and exits
-non-zero when leakage guards block experiments.
+```bash
+make lint
+make test
+```
 
-`kgmon experiment plan --mode baseline --workspace <workspace>` writes the M4
-baseline experiment plan and immutable sklearn baseline spec.
+`make typecheck` runs mypy. GitHub Actions runs Ruff and pytest on pull requests and pushes to `main`.
 
-`kgmon experiment run --all --workspace <workspace>` executes the planned
-baseline, writes OOF and test prediction CSVs using the M4 contracts, stores the
-baseline model artifact, and records a JSON run report.
-
-`kgmon experiment run --dag <path> --workspace <workspace>` executes DAG nodes in
-dependency order and registers lineage in `artifacts/registry.sqlite`.
-
-`kgmon artifacts list --workspace <workspace>` prints registered artifacts with
-their producing run IDs.
-
-`kgmon ensemble search --workspace <workspace>` builds
-`artifacts/ensembles/ensemble_v001.yaml` and
-`artifacts/submissions/submission_ensemble_v001.csv`.
-
-`kgmon package final --workspace <workspace>` validates the ensemble submission
-and creates the final reproducible package, including `submission.csv`,
-`inference.py`, `solution.ipynb`, environment files, provenance, and report.
-
-Notebook and submission commands call the Kaggle adapter layer and archive their
-responses under `kaggle/notebooks/` and `kaggle/submissions/`. Final submission
-is guarded and requires explicit confirmation unless competition rules allow
-automatic submission.
+Milestone notes that used to live in this file are in [CHANGELOG.md](CHANGELOG.md).
