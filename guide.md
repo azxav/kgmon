@@ -27,8 +27,8 @@ $env:KAGGLE_USERNAME = "<your-username>"
 $env:KAGGLE_KEY = "<your-key>"
 ```
 
-You can also copy `.env.example` to `.env` and fill in the values for local
-development.
+`.env.example` lists the same variable names. kgmon reads the process
+environment; export the values in the shell that starts the CLI or MCP server.
 
 ## 1. Get the Repo Ready
 
@@ -85,8 +85,8 @@ kgx mcp install --client codex
 kgx mcp doctor --client codex
 ```
 
-The generated `.mcp.json` should look like this, with your absolute repository
-path in `KGMON_HOME`:
+The generated `.mcp.json` should look like this. `KGMON_HOME` is the absolute
+path of this repository on your machine:
 
 ```json
 {
@@ -95,7 +95,7 @@ path in `KGMON_HOME`:
       "command": "python",
       "args": ["-m", "kgmon_mcp.stdio"],
       "env": {
-        "KGMON_HOME": "C:\\Users\\aziz\\Projects\\kgmon",
+        "KGMON_HOME": "/absolute/path/to/kgmon",
         "KGMON_SECURITY": "strict"
       },
       "x-kgmon-managed": true
@@ -112,19 +112,19 @@ local marketplace entry that points to a plugin folder or junction named
 `kgmon`. The plugin manifest name is `kgmon`, and the app display name is
 `KGMON-Codex`.
 
-For this machine, the working layout is a small wrapper plugin that points its
-MCP server at this repo:
+A local Codex marketplace can point at a plugin folder that contains this
+repo's `.codex-plugin/plugin.json` and `.mcp.json`:
 
 ```text
-C:\Users\aziz\.agents\plugins\marketplace.json
-C:\Users\aziz\plugins\kgmon\.codex-plugin\plugin.json
-C:\Users\aziz\plugins\kgmon\.mcp.json
+<marketplace-root>/.agents/plugins/marketplace.json
+<marketplace-root>/plugins/kgmon/.codex-plugin/plugin.json
+<marketplace-root>/plugins/kgmon/.mcp.json
 ```
 
 Then install it through Codex:
 
 ```powershell
-codex plugin marketplace add C:\Users\aziz
+codex plugin marketplace add <marketplace-root>
 codex plugin add kgmon@personal
 codex plugin list
 codex mcp list
